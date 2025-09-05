@@ -1,0 +1,141 @@
+services:
+  # Nginx Reverse Proxy
+  nginx:
+    container_name: callerai
+    image: nginx:alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      callerapp:
+        condition: service_healthy
+      jambonz:
+        condition: service_healthy
+      private-api:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    networks:
+      - shared_network
+
+  # Main React Router application
+  callerapp:
+    container_name: callerapp
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - SESSION_SECRET=${SESSION_SECRET}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "bun --version && curl -f http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    networks:
+      - shared_network
+
+  # Jambonz WebSocket Service
+  jambonz:
+    container_name: jambonz
+    build:
+      context: ./services/jambonz
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/jambonz/.env
+    environment:
+      - NODE_ENV=production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "bun --version && curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    networks:
+      - shared_network
+
+  # Private API Service (internal only)
+  private-api:
+    container_name: private-api
+    build:
+      context: ./services/private-api
+      dockerfile: Dockerfile
+    env_file:
+      - ./services/private-api/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.3'
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "bun --version && curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16

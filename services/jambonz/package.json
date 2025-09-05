@@ -1,0 +1,25 @@
+{
+  "name": "jambonz-service",
+  "version": "1.0.0",
+  "description": "Jambonz WebSocket Service with Elysia",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target node --outdir dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.1.2",
+    "@jambonz/node-client-ws": "^0.1.7",
+    "dotenv": "^16.4.7",
+    "elysia": "^1.1.28",
+    "pino": "^9.9.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.14",
+    "@types/node": "^22.10.6",
+    "typescript": "^5.7.3"
+  }
+}
